@@ -21,11 +21,10 @@
 
 #pip install -r requirements.txt
 
-
-
 from shiny import App, ui, render
 import fitz  # PyMuPDF
 import os
+import requests
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
@@ -35,19 +34,27 @@ from sklearn.metrics.pairwise import cosine_similarity
 # 📌 Charger le modèle NLP
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-def lire_pdfs(dossier):
+# 📌 URL du fichier PDF sur GitHub
+PDF_URL = "https://raw.githubusercontent.com/mahmoudthiam/Projet/main/Strategie-Nationale-de-Developpement-2025-2029.pdf"
+LOCAL_PDF = "document.pdf"
+
+# 📌 Télécharger le PDF depuis GitHub
+def telecharger_pdf():
+    response = requests.get(PDF_URL)
+    with open(LOCAL_PDF, "wb") as f:
+        f.write(response.content)
+
+# 📌 Lire le contenu du PDF
+def lire_pdf(fichier):
     texte_total = []
-    for fichier in os.listdir(dossier):
-        if fichier.endswith(".pdf"):
-            chemin = os.path.join(dossier, fichier)
-            doc = fitz.open(chemin)
-            for page in doc:
-                texte_total.append(page.get_text("text"))
+    doc = fitz.open(fichier)
+    for page in doc:
+        texte_total.append(page.get_text("text"))
     return texte_total
 
 # 📌 Charger les documents
-dossier_pdfs = "C:/Users/thiam/Desktop/vision2050/"  # Remplace par ton dossier PDF
-documents = lire_pdfs(dossier_pdfs)
+telecharger_pdf()
+documents = lire_pdf(LOCAL_PDF)
 texte_corpus = " ".join(documents)
 
 # 🔥 Encoder les documents
@@ -58,15 +65,13 @@ dimension = doc_embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)
 index.add(doc_embeddings)
 
+# 📌 Fonction de réponse aux questions
 def repondre_question(question):
     documents_list = texte_corpus.split(". ")
     vect = TfidfVectorizer()
     tfidf_matrix = vect.fit_transform(documents_list + [question])
     scores = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
-    # Récupérer les indices des 3 meilleures phrases
-    top_indices = np.argsort(scores[0])[-50:][::-1]  # Sélection des 3 meilleures réponses
-    #meilleure_reponse = documents_list[scores.argmax()]
-    # Combiner les phrases pour avoir une réponse plus complète
+    top_indices = np.argsort(scores[0])[-50:][::-1]  # Sélection des 50 meilleures réponses
     meilleure_reponse = ". ".join([documents_list[i] for i in top_indices])
     return meilleure_reponse
 
@@ -91,6 +96,7 @@ app_ui = ui.page_fluid(
     )
 )
 
+# 🚀 Serveur de l'application
 def server(input, output, session):
     @output
     @render.text
@@ -104,5 +110,3 @@ def server(input, output, session):
 
 # 🚀 Lancer l'application
 app = App(app_ui, server)
-
-# Assure-toi que ce bloc est bien exécuté et accessible pour Shiny.
