@@ -71,8 +71,8 @@ def repondre_question(question):
     vect = TfidfVectorizer()
     tfidf_matrix = vect.fit_transform(documents_list + [question])
     scores = cosine_similarity(tfidf_matrix[-1], tfidf_matrix[:-1])
-    top_indices = np.argsort(scores[0])[-15:][::-1]  # Sélection des 50 meilleures réponses
-    meilleure_reponse = "\n".join([documents_list[i] for i in top_indices])
+    top_indices = np.argsort(scores[0])[-20:][::-1]  # Sélection des 50 meilleures réponses
+    meilleure_reponse = ".\n".join([documents_list[i] for i in top_indices]) + '.'
     return meilleure_reponse
 
 # 🎨 Interface stylée
